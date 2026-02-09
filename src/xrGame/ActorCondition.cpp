@@ -46,6 +46,7 @@ CActorCondition::CActorCondition(CActor *object) :
 	m_fSprintK					= 0.f;
 	m_fAlcohol					= 0.f;
 	m_fSatiety					= 1.0f;
+	m_bWounded					= false;
 
 //	m_vecBoosts.clear();
 
@@ -98,10 +99,13 @@ void CActorCondition::LoadCondition(LPCSTR entity_section)
 	m_fAccelK					= pSettings->r_float(section,"accel_k");
 	m_fSprintK					= pSettings->r_float(section,"sprint_k");
 
-	//порог силы и здоровья меньше которого актер начинает хромать
+	//РїРѕСЂРѕРі СЃРёР»С‹ Рё Р·РґРѕСЂРѕРІСЊСЏ РјРµРЅСЊС€Рµ РєРѕС‚РѕСЂРѕРіРѕ Р°РєС‚РµСЂ РЅР°С‡РёРЅР°РµС‚ С…СЂРѕРјР°С‚СЊ
 	m_fLimpingHealthBegin		= pSettings->r_float(section,	"limping_health_begin");
 	m_fLimpingHealthEnd			= pSettings->r_float(section,	"limping_health_end");
 	R_ASSERT					(m_fLimpingHealthBegin<=m_fLimpingHealthEnd);
+	m_fWoundedHealthBegin		= READ_IF_EXISTS(pSettings, r_float, section, "wounded_health_begin", m_fLimpingHealthBegin);
+	m_fWoundedHealthEnd			= READ_IF_EXISTS(pSettings, r_float, section, "wounded_health_end", m_fLimpingHealthEnd);
+	R_ASSERT					(m_fWoundedHealthBegin<=m_fWoundedHealthEnd);
 
 	m_fLimpingPowerBegin		= pSettings->r_float(section,	"limping_power_begin");
 	m_fLimpingPowerEnd			= pSettings->r_float(section,	"limping_power_end");
@@ -467,7 +471,7 @@ void CActorCondition::PowerHit(float power, bool apply_outfit)
 	m_fPower			-=	apply_outfit ? HitPowerEffect(power) : power;
 	clamp					(m_fPower, 0.f, 1.f);
 }
-//weight - "удельный" вес от 0..1
+//weight - "СѓРґРµР»СЊРЅС‹Р№" РІРµСЃ РѕС‚ 0..1
 void CActorCondition::ConditionJump(float weight)
 {
 	float power			=	m_fJumpPower;
@@ -533,6 +537,15 @@ bool CActorCondition::IsLimping() const
 		m_bLimping = false;
 	return m_bLimping;
 }
+
+bool CActorCondition::IsWounded() const
+{
+	if (GetHealth() < m_fWoundedHealthBegin)
+		m_bWounded = true;
+	else if (GetHealth() > m_fWoundedHealthEnd)
+		m_bWounded = false;
+	return m_bWounded;
+}
 extern bool g_bShowHudInfo;
 
 void CActorCondition::save(NET_Packet &output_packet)
@@ -595,6 +608,7 @@ void CActorCondition::reinit	()
 {
 	inherited::reinit	();
 	m_bLimping					= false;
+	m_bWounded					= false;
 	m_fSatiety					= 1.f;
 }
 

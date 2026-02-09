@@ -880,6 +880,11 @@ void	CActor::OnChangeVisual()
 		CStepManager::reload(cNameSect().c_str());
 		SetCallbacks		();
 		m_anims->Create		(V);
+		m_wounded_idle = V->ID_Cycle_Safe("wounded_idle");
+		m_wounded_walk_back = V->ID_Cycle_Safe("wounded_walk_back");
+		m_wounded_walk_fwd = V->ID_Cycle_Safe("wounded_walk_fwd");
+		m_wounded_walk_l = V->ID_Cycle_Safe("wounded_walk_l");
+		m_wounded_walk_r = V->ID_Cycle_Safe("wounded_walk_r");
 //.		m_vehicle_anims->Create			(V);
 		CDamageManager::reload(*cNameSect(),"damage",pSettings);
 		//-------------------------------------------------------------------------------

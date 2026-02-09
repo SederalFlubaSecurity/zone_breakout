@@ -2,6 +2,7 @@
 #include "Actor.h"
 #include "ActorAnimation.h"
 #include "actor_anim_defs.h"
+#include "ActorCondition.h"
 #include "weapon.h"
 #include "inventory.h"
 #include "missile.h"
@@ -331,87 +332,112 @@ void CActor::g_SetAnimation( u32 mstate_rl )
 
 		return;
 	}
+	CActorCondition& actor_conditions = static_cast<CActorCondition&>(conditions());
+	const bool use_wounded_anims = actor_conditions.IsWounded() && m_wounded_idle.valid();
 	STorsoWpn::eMovingState	moving_idx 		= STorsoWpn::eIdle;
 	SActorState*					ST 		= 0;
 	SAnimState*						AS 		= 0;
-	
-	if		(mstate_rl&mcCrouch)	
-		ST 		= &m_anims->m_crouch;
-	else if	(mstate_rl&mcClimb)		
-		ST 		= &m_anims->m_climb;
-	else							
-		ST 		= &m_anims->m_normal;
 
-	bool bAccelerated = isActorAccelerated(mstate_rl, IsZoomAimingMode());
-	if ( bAccelerated )
-	{
-		AS							= &ST->m_run;
-	}else{
-		AS							= &ST->m_walk;
-	}
-	if(mstate_rl&mcAnyMove)
-	{
-		if( bAccelerated )
-			moving_idx				= STorsoWpn::eRun;
-		else
-			moving_idx				= STorsoWpn::eWalk;
-	}
-	// анимации
+	// Р°РЅРёРјР°С†РёРё
 	MotionID 						M_legs;
 	MotionID 						M_torso;
 	MotionID 						M_head;
 
-	//если мы просто стоим на месте
+	//РµСЃР»Рё РјС‹ РїСЂРѕСЃС‚Рѕ СЃС‚РѕРёРј РЅР° РјРµСЃС‚Рµ
 	bool is_standing = false;
 
-	// Legs
-	if		(mstate_rl&mcLanding)	M_legs	= ST->landing[0];
-	else if (mstate_rl&mcLanding2)	M_legs	= ST->landing[1];
-	else if ((mstate_rl&mcTurn)&&
-			!(mstate_rl&mcClimb))	M_legs	= ST->legs_turn;
-	else if (mstate_rl&mcFall)		M_legs	= ST->jump_idle;
-	else if (mstate_rl&mcJump)		M_legs	= ST->jump_begin;
-	else if (mstate_rl&mcFwd)		M_legs	= AS->legs_fwd;
-	else if (mstate_rl&mcBack)		M_legs	= AS->legs_back;
-	else if (mstate_rl&mcLStrafe)	M_legs	= AS->legs_ls;
-	else if (mstate_rl&mcRStrafe)	M_legs	= AS->legs_rs;
-	else is_standing = true;
-
-	if(mstate_rl&mcSprint)
+	if (use_wounded_anims)
 	{
-		g_SetSprintAnimation			(mstate_rl,M_head,M_torso,M_legs);
-		moving_idx						= STorsoWpn::eSprint;
-	}
-
-	if (this == Level().CurrentViewEntity())
-	{	
-		if ((mstate_rl&mcSprint) != (mstate_old&mcSprint))
-		{
-			g_player_hud->OnMovementChanged(mcSprint);
-		}else
-		if ((mstate_rl&mcAnyMove) != (mstate_old&mcAnyMove))
-		{
-			g_player_hud->OnMovementChanged(mcAnyMove);
+		MotionID wounded_idle = m_wounded_idle;
+		MotionID wounded_fwd = m_wounded_walk_fwd.valid() ? m_wounded_walk_fwd : wounded_idle;
+		MotionID wounded_back = m_wounded_walk_back.valid() ? m_wounded_walk_back : wounded_idle;
+		MotionID wounded_left = m_wounded_walk_l.valid() ? m_wounded_walk_l : wounded_idle;
+		MotionID wounded_right = m_wounded_walk_r.valid() ? m_wounded_walk_r : wounded_idle;
+		if (mstate_rl&mcFwd)		M_legs	= wounded_fwd;
+		else if (mstate_rl&mcBack)	M_legs	= wounded_back;
+		else if (mstate_rl&mcLStrafe)	M_legs	= wounded_left;
+		else if (mstate_rl&mcRStrafe)	M_legs	= wounded_right;
+		else {
+			M_legs = wounded_idle;
+			is_standing = true;
 		}
-	};
-
-	//-----------------------------------------------------------------------
-	// Torso
-	if(mstate_rl&mcClimb)
-	{
-		if		(mstate_rl&mcFwd)		M_torso	= AS->legs_fwd;
-		else if (mstate_rl&mcBack)		M_torso	= AS->legs_back;
-		else if (mstate_rl&mcLStrafe)	M_torso	= AS->legs_ls;
-		else if (mstate_rl&mcRStrafe)	M_torso	= AS->legs_rs;
+		if (!M_legs)
+			M_legs = wounded_idle;
+		M_torso = M_legs;
+		M_head = M_legs;
 	}
-	
-	if(!M_torso)
+	else
 	{
-		CInventoryItem* _i = inventory().ActiveItem();
-		CHudItem		*H = smart_cast<CHudItem*>(_i);
-		CWeapon			*W = smart_cast<CWeapon*>(_i);
-		CMissile		*M = smart_cast<CMissile*>(_i);
-		CArtefact		*A = smart_cast<CArtefact*>(_i);
+		if		(mstate_rl&mcCrouch)	
+			ST 		= &m_anims->m_crouch;
+		else if	(mstate_rl&mcClimb)		
+			ST 		= &m_anims->m_climb;
+		else							
+			ST 		= &m_anims->m_normal;
+
+		bool bAccelerated = isActorAccelerated(mstate_rl, IsZoomAimingMode());
+		if ( bAccelerated )
+		{
+			AS							= &ST->m_run;
+		}else{
+			AS							= &ST->m_walk;
+		}
+		if(mstate_rl&mcAnyMove)
+		{
+			if( bAccelerated )
+				moving_idx				= STorsoWpn::eRun;
+			else
+				moving_idx				= STorsoWpn::eWalk;
+		}
+
+		// Legs
+		if		(mstate_rl&mcLanding)	M_legs	= ST->landing[0];
+		else if (mstate_rl&mcLanding2)	M_legs	= ST->landing[1];
+		else if ((mstate_rl&mcTurn)&&
+				!(mstate_rl&mcClimb))	M_legs	= ST->legs_turn;
+		else if (mstate_rl&mcFall)		M_legs	= ST->jump_idle;
+		else if (mstate_rl&mcJump)		M_legs	= ST->jump_begin;
+		else if (mstate_rl&mcFwd)		M_legs	= AS->legs_fwd;
+		else if (mstate_rl&mcBack)		M_legs	= AS->legs_back;
+		else if (mstate_rl&mcLStrafe)	M_legs	= AS->legs_ls;
+		else if (mstate_rl&mcRStrafe)	M_legs	= AS->legs_rs;
+		else is_standing = true;
+
+		if(mstate_rl&mcSprint)
+		{
+			g_SetSprintAnimation			(mstate_rl,M_head,M_torso,M_legs);
+			moving_idx						= STorsoWpn::eSprint;
+		}
+
+		if (this == Level().CurrentViewEntity())
+		{	
+			if ((mstate_rl&mcSprint) != (mstate_old&mcSprint))
+			{
+				g_player_hud->OnMovementChanged(mcSprint);
+			}else
+			if ((mstate_rl&mcAnyMove) != (mstate_old&mcAnyMove))
+			{
+				g_player_hud->OnMovementChanged(mcAnyMove);
+			}
+		};
+
+		//-----------------------------------------------------------------------
+		// Torso
+		if(mstate_rl&mcClimb)
+		{
+			if		(mstate_rl&mcFwd)		M_torso	= AS->legs_fwd;
+			else if (mstate_rl&mcBack)		M_torso	= AS->legs_back;
+			else if (mstate_rl&mcLStrafe)	M_torso	= AS->legs_ls;
+			else if (mstate_rl&mcRStrafe)	M_torso	= AS->legs_rs;
+		}
+		
+		if(!M_torso)
+		{
+			CInventoryItem* _i = inventory().ActiveItem();
+			CHudItem		*H = smart_cast<CHudItem*>(_i);
+			CWeapon			*W = smart_cast<CWeapon*>(_i);
+			CMissile		*M = smart_cast<CMissile*>(_i);
+			CArtefact		*A = smart_cast<CArtefact*>(_i);
 					
 		if (H) {
 			VERIFY(H->animation_slot() <= _total_anim_slots_);
@@ -536,6 +562,7 @@ void CActor::g_SetAnimation( u32 mstate_rl )
 			}
 		}
 	}
+}
 	MotionID		mid = smart_cast<IKinematicsAnimated*>(Visual())->ID_Cycle("norm_idle_0");
 
 	if (!M_legs)
@@ -558,7 +585,7 @@ void CActor::g_SetAnimation( u32 mstate_rl )
 			M_torso = ST->m_torso_idle;
 	}
 	
-	// есть анимация для всего - запустим / иначе запустим анимацию по частям
+	// РµСЃС‚СЊ Р°РЅРёРјР°С†РёСЏ РґР»СЏ РІСЃРµРіРѕ - Р·Р°РїСѓСЃС‚РёРј / РёРЅР°С‡Рµ Р·Р°РїСѓСЃС‚РёРј Р°РЅРёРјР°С†РёСЋ РїРѕ С‡Р°СЃС‚СЏРј
 	if (m_current_torso!=M_torso)
 	{
 		if (m_bAnimTorsoPlayed)		

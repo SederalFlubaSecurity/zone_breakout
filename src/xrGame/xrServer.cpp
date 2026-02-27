@@ -200,6 +200,19 @@ void xrServer::GetPooledState(xrClientData* xrCL)
 	tmp_packet.r_begin				(tmp_fake);
 	xrCL->ps->net_Import			(tmp_packet);
 	xrCL->ps->flags__ = 0; // reset flags
+
+	// Restore admin rights from pooled client
+	if (pooled_client->m_admin_rights.m_has_admin_rights)
+	{
+		xrCL->m_admin_rights.m_has_admin_rights	= TRUE;
+		xrCL->m_admin_rights.m_dwLoginTime		= pooled_client->m_admin_rights.m_dwLoginTime;
+		if (xrCL->ps)
+		{
+			xrCL->ps->setFlag(GAME_PLAYER_HAS_ADMIN_RIGHTS);
+		}
+		Msg("# Restored admin rights for reconnected player [%s].", xrCL->ps ? xrCL->ps->getName() : "unknown");
+	}
+
 	xrCL->flags.bReconnect			= TRUE;
 	xr_delete						(pooled_client);
 }
@@ -528,8 +541,8 @@ void xrServer::SendUpdatePacketsToAll()
 					}
 					else
 					{
-						// Если родительский объект отсутствует, значит это просто предмет лежащий на карте.
-						// Такие объекты не обновляются постоянно (по крайней мере не должны).
+						// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.
+						// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ).
 						m_updator->write_update_for(entity->ID, packet);
 					}
 				}
